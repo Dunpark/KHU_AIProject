@@ -243,5 +243,49 @@ if st.session_state.final_result:
             st.video(f"https://www.youtube.com/watch?v={vid_id}")
         else:
             st.warning("📺 YouTube 검색 결과 없음")
+    # ▒▒▒ 정확도 평가 요청 ▒▒▒
+        eval_prompt = f"""
+        아래 곡 정보와 사용자 입력 정보를 비교하여, 각 항목의 일치도를 '높음/중간/낮음' 중 하나로 평가하고,
+        해당 점수를 0~100 사이 퍼센트로 요약하여 출력하세요. (출력 형식은 JSON만)
+
+        사용자 정보:
+        감정: {emotion}
+        상황: {situation}
+        장르: {genre}
+        국가: {country}
+
+        곡 정보:
+        제목: {music['title']}
+        아티스트: {music['artist']}
+        설명: {music['description']}
+
+        출력 예시:
+        {{
+          "emotion_match": "중간",
+          "situation_match": "높음",
+          "genre_match": "높음",
+          "country_match": "낮음",
+          "total_score": 65
+        }}
+        """
+        try:
+            eval_result = openai_client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "일치도를 평가하는 시스템입니다. JSON으로만 응답하세요."},
+                    {"role": "user", "content": eval_prompt}
+                ]
+            )
+            match_result = json.loads(eval_result.choices[0].message.content)
+            st.success(f"🎯 일치도: {match_result['total_score']}%")
+            with st.expander("🔎 세부 평가 보기"):
+                st.write(f"감정: {match_result['emotion_match']}")
+                st.write(f"상황: {match_result['situation_match']}")
+                st.write(f"장르: {match_result['genre_match']}")
+                st.write(f"국가: {match_result['country_match']}")
+        except Exception as e:
+            st.warning(f"일치도 평가 실패: {e}")
 
         st.divider()
+        
+        
